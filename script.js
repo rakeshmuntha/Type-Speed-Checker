@@ -29,7 +29,13 @@ document.getElementById("inputBox").disabled = true;
 function startGame() {
     // Clear and focus the input box
     tryagainbool.disabled = false;
-
+    
+    // Reset all game variables to start fresh
+    isGameOver = false;
+    currentWordIndex = 0;
+    correctChars = 0;
+    wordMistake = false;
+    
     document.getElementById("inputBox").value = "";
     document.getElementById("inputBox").disabled = false;
     document.getElementById("inputBox").focus();
@@ -46,9 +52,14 @@ function loadNewParagraph() {
     currentParagraph = paragraphsData[Math.floor(Math.random() * paragraphsData.length)];
     displayParagraph(currentParagraph);
     
+    // Remove old event listeners before adding new ones to prevent duplicates
+    const inputBox = document.getElementById("inputBox");
+    inputBox.removeEventListener("input", checkInput);
+    inputBox.removeEventListener("keydown", preventWordSkip);
+    
     // Set up event listeners
-    document.getElementById("inputBox").addEventListener("input", checkInput);
-    document.getElementById("inputBox").addEventListener("keydown", preventWordSkip);
+    inputBox.addEventListener("input", checkInput);
+    inputBox.addEventListener("keydown", preventWordSkip);
 }
 
 function startTimer() {
@@ -201,9 +212,14 @@ function resetGame() {
     if (currentParagraph) {
         displayParagraph(currentParagraph);
         
+        // Remove old event listeners before adding new ones
+        const inputBox = document.getElementById("inputBox");
+        inputBox.removeEventListener("input", checkInput);
+        inputBox.removeEventListener("keydown", preventWordSkip);
+        
         // Set up event listeners
-        document.getElementById("inputBox").addEventListener("input", checkInput);
-        document.getElementById("inputBox").addEventListener("keydown", preventWordSkip);
+        inputBox.addEventListener("input", checkInput);
+        inputBox.addEventListener("keydown", preventWordSkip);
         
         // Start timer
         startTimer();
