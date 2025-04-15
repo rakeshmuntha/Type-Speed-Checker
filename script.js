@@ -5,6 +5,41 @@ tryagainbool.disabled = true;
 
 document.getElementById("tryAgain").addEventListener("click", resetGame);
 
+
+
+// Add event listener for Tab + Enter combination to start game
+document.addEventListener("keydown", function(event) {
+    // Check if Tab key is pressed (keyCode 9)
+    if (event.key === "Tab" && event.shiftKey === false) {
+        // Add a flag to track that Tab was pressed
+        window.tabPressed = true;
+        
+        // Prevent default Tab behavior
+        event.preventDefault();
+    }
+    
+    // Check if Enter is pressed and Tab was previously pressed
+    if (event.key === "Enter" && window.tabPressed === true) {
+        // Reset the tab flag
+        window.tabPressed = false;
+        
+        // Start the game
+        startGame();
+        
+        // Prevent default Enter behavior
+        event.preventDefault();
+    }
+    
+    // Reset tab flag when any other key is pressed
+    if (event.key !== "Tab" && event.key !== "Enter") {
+        window.tabPressed = false;
+    }
+});
+
+
+
+
+
 let timerInterval;
 let mistakes = 0;
 let isGameOver = false;
@@ -55,11 +90,11 @@ function loadNewParagraph() {
     // Remove old event listeners before adding new ones to prevent duplicates
     const inputBox = document.getElementById("inputBox");
     inputBox.removeEventListener("input", checkInput);
-    inputBox.removeEventListener("keydown", preventWordSkip);
+    inputBox.removeEventListener("keydown", handleKeyDown);
     
     // Set up event listeners
     inputBox.addEventListener("input", checkInput);
-    inputBox.addEventListener("keydown", preventWordSkip);
+    inputBox.addEventListener("keydown", handleKeyDown);
 }
 
 function startTimer() {
@@ -113,61 +148,74 @@ function checkInput() {
     const currentWord = words[currentWordIndex];
     const currentWordText = Array.from(currentWord.children).map(span => span.innerText).join("");
 
-    if (typedText === currentWordText) {
-        currentWord.classList.remove("incorrect");
-        Array.from(currentWord.children).forEach(span => span.classList.add("correct-letter"));
-        currentWordIndex++;
-        correctChars += typedText.length;
-        document.getElementById("inputBox").value = "";
+    // We no longer auto-advance to the next word here
+    // Only mark letters as correct/incorrect
+    const typedChars = typedText.split("");
+
+    let isMistake = false;
+    Array.from(currentWord.children).forEach((span, index) => {
+        if (typedChars[index] === span.innerText) {
+            span.classList.add("correct-letter");
+            span.classList.remove("incorrect-letter");
+        } else if (typedChars[index] !== undefined) {
+            span.classList.add("incorrect-letter");
+            span.classList.remove("correct-letter");
+            isMistake = true;
+        } else {
+            span.classList.remove("correct-letter", "incorrect-letter");
+        }
+    });
+
+    if (isMistake && !wordMistake) {
+        mistakes++;
+        document.getElementById("mistakes").innerText = mistakes;
+        wordMistake = true;
+    } else if (!isMistake) {
         wordMistake = false;
-        
-        // Check if we reached the end of the paragraph
-        if (currentWordIndex === words.length) {
-            endGame();
-        }
-    } else {
-        const typedChars = typedText.split("");
-
-        let isMistake = false;
-        Array.from(currentWord.children).forEach((span, index) => {
-            if (typedChars[index] === span.innerText) {
-                span.classList.add("correct-letter");
-                span.classList.remove("incorrect-letter");
-            } else if (typedChars[index] !== undefined) {
-                span.classList.add("incorrect-letter");
-                span.classList.remove("correct-letter");
-                isMistake = true;
-            } else {
-                span.classList.remove("correct-letter", "incorrect-letter");
-            }
-        });
-
-        if (isMistake && !wordMistake) {
-            mistakes++;
-            document.getElementById("mistakes").innerText = mistakes;
-            wordMistake = true;
-        } else if (!isMistake) {
-            wordMistake = false;
-        }
-
-        currentWord.classList.toggle("incorrect", isMistake);
     }
+
+    currentWord.classList.toggle("incorrect", isMistake);
 }
 
-function preventWordSkip(event) {
+function handleKeyDown(event) {
+    if (isGameOver) return;
+    
+    // When spacebar is pressed
     if (event.key === " ") {
-        const typedText = document.getElementById("inputBox").value.trim();
         const words = document.getElementById("paragraph").children;
         
+        // Check if we're still within the valid word range
         if (currentWordIndex >= words.length) {
             event.preventDefault();
             return;
         }
         
         const currentWord = words[currentWordIndex];
+        const typedText = document.getElementById("inputBox").value.trim();
         const currentWordText = Array.from(currentWord.children).map(span => span.innerText).join("");
-
-        if (typedText !== currentWordText) {
+        
+        // If the word is correct and spacebar is pressed, proceed to next word
+        if (typedText === currentWordText) {
+            event.preventDefault(); // Prevent the space from being added to input
+            
+            // Mark the word as correct
+            currentWord.classList.remove("incorrect");
+            Array.from(currentWord.children).forEach(span => span.classList.add("correct-letter"));
+            
+            // Record progress
+            currentWordIndex++;
+            correctChars += typedText.length;
+            
+            // Clear the input box
+            document.getElementById("inputBox").value = "";
+            wordMistake = false;
+            
+            // Check if we reached the end of the paragraph
+            if (currentWordIndex === words.length) {
+                endGame();
+            }
+        } else {
+            // If word is not correct, prevent spacebar from adding a space
             event.preventDefault();
         }
     }
@@ -190,7 +238,7 @@ function endGame() {
     isGameOver = true;
     calculateWPM();
     document.getElementById("inputBox").removeEventListener("input", checkInput);
-    document.getElementById("inputBox").removeEventListener("keydown", preventWordSkip);
+    document.getElementById("inputBox").removeEventListener("keydown", handleKeyDown);
     document.getElementById("inputBox").disabled = true;
 }
 
@@ -215,11 +263,11 @@ function resetGame() {
         // Remove old event listeners before adding new ones
         const inputBox = document.getElementById("inputBox");
         inputBox.removeEventListener("input", checkInput);
-        inputBox.removeEventListener("keydown", preventWordSkip);
+        inputBox.removeEventListener("keydown", handleKeyDown);
         
         // Set up event listeners
         inputBox.addEventListener("input", checkInput);
-        inputBox.addEventListener("keydown", preventWordSkip);
+        inputBox.addEventListener("keydown", handleKeyDown);
         
         // Start timer
         startTimer();
